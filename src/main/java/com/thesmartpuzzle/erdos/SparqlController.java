@@ -73,13 +73,13 @@ public class SparqlController {
 				sparqlQueryString += steps + "/" + label + " ?t2 }";
 		} else {
 			if(terms[0].isURI())
-				sparqlQueryString += "SELECT DISTINCT ?s WHERE { ?t1 ";
+				sparqlQueryString += "SELECT ?l WHERE { ?t1 ";
 			else
-				sparqlQueryString += "SELECT DISTINCT ?s WHERE { ?t1 ^" + label + "/";
+				sparqlQueryString += "SELECT ?l WHERE { ?t1 ^" + label + "/";
 			if(terms[1].isURI())
-				sparqlQueryString += steps + " ?s }";
+				sparqlQueryString += steps + " ?t2 . ?t2 "+label+" ?l }";
 			else
-				sparqlQueryString += steps + "/" + label + " ?s }";
+				sparqlQueryString += steps + "/" + label + " ?t2 . ?t2 "+label+" ?l }";
 		}
 		
 		String term1 = terms[0].getTerm(), term2 = terms[1].getTerm();
@@ -100,33 +100,31 @@ public class SparqlController {
 				pss.setLiteral("t"+(i+1), terms[i].getTerm());
 		
 		Query query = pss.asQuery();
+		LOGGER.info(query.toString());
 		
 		QueryExecution qexec = QueryExecutionFactory.sparqlService(
 				disc.getEndpoint(), query);
 		
-		boolean result = false;
+		Boolean result = false;
 		
 		if(disc.useAsk()) {
 			result = qexec.execAsk();
 		} else {
 			
-			ResultSet rs = qexec.execSelect();
-			while(rs.hasNext()) {
-				String res;
-				if(terms[1].isURI())
-					res = rs.next().get("s").asResource().getURI();
-				else
-					res = rs.next().get("s").asLiteral().getString();
-				LOGGER.debug("Is "+res+" equal to "+term2+"?");
-				if(res.equals(term2)) {
-					result = true;
-					break;
-				}
+			ResultSet rs = null;
+			try {
+				rs = qexec.execSelect();
+			} catch (Exception e) {
+				LOGGER.warn("HTTPException.");
+				LOGGER.info("Erdós number is at least n="+number+".");
+				result = null;
 			}
+			if(rs != null)
+				if(rs.hasNext())
+					result = true;
 			
 		}
 		
-		LOGGER.info(query.toString());
 		LOGGER.info(result);
 		qexec.close();
 		return result;
